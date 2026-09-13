@@ -1,0 +1,37 @@
+[
+  {
+    "id": "TC01",
+    "type": "direct_query",
+    "question": "Chào bạn, quy trình kho vận chuẩn của VinLogistics gồm những bước nào?",
+    "expected_behavior": "Chatbot/Agent trả lời trực tiếp từ System Prompt về quy trình kho vận, không cần gọi bất kỳ Tool nào.",
+    "complexity": "Low"
+  },
+  {
+    "id": "TC02",
+    "type": "single_tool_query",
+    "question": "Hãy tra cứu mã vận đơn VD2609001 và cho biết vị trí lưu kho hiện tại.",
+    "expected_behavior": "Agent nhận diện nhu cầu tra cứu, tự động phát sinh Tool Call 'track_shipment' với mã VD2609001.",
+    "complexity": "Medium"
+  },
+  {
+    "id": "TC03",
+    "type": "appointment_booking",
+    "question": "Cập nhật trạng thái đơn hàng VD2609001 thành 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh.",
+    "expected_behavior": "Agent tự động phát sinh Tool Call 'update_order_status' với tracking_code=VD2609001, new_status='Đã giao hàng' và warehouse_location='Kho Trung tâm Bắc Ninh'.",
+    "complexity": "Medium"
+  },
+  {
+    "id": "TC04",
+    "type": "multi_step_reasoning",
+    "question": "Tra cứu vị trí lưu kho của đơn VD2609002. Nếu đơn còn đang chờ xuất kho thì cập nhật trạng thái thành 'Đã xuất kho'.",
+    "expected_behavior": "Agent thực hiện chuỗi suy luận ReAct: gọi track_shipment để xác nhận trạng thái/kho trước, sau đó gọi update_order_status nếu Observation cho thấy đơn đang 'Chờ xuất kho'.",
+    "complexity": "High"
+  },
+  {
+    "id": "TC05",
+    "type": "edge_case_handling",
+    "question": "Hãy tra cứu mã vận đơn VD9999999 giúp tôi.",
+    "expected_behavior": "Agent nhận kết quả NOT_FOUND từ Tool track_shipment và đưa ra phản hồi lịch sự, chính xác, không bịa đặt dữ liệu đơn hàng.",
+    "complexity": "Medium"
+  }
+]

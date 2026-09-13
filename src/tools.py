@@ -1,6 +1,7 @@
 """
 🛠️ TOOL DEFINITIONS & EXECUTION BACKEND
 Mã nguồn chứa danh sách Tool Schemas (JSON Schema) và Execution Layer phục vụ cho MCP Server.
+Đề tài 3.2: Trợ lý Đơn hàng & Kho vận (Supply Chain Agent)
 """
 
 import json
@@ -11,41 +12,49 @@ from typing import Dict, Any
 # ==============================================================================
 
 TOOLS_SCHEMA = [
-    # Tool 1: Đã được định nghĩa mẫu sẵn cho Học viên tham khảo
+    # Tool 1: Tra cứu mã vận đơn + vị trí lưu kho
     {
-        "name": "academic_query",
-        "description": "Tra cứu hồ sơ và thông tin học vụ của sinh viên VinUni bằng mã sinh viên.",
+        "name": "track_shipment",
+        "description": (
+            "Tra cứu đơn hàng theo mã vận đơn: thông tin khách hàng, hàng hóa, "
+            "vị trí lưu kho (kho / dãy / ô) và trạng thái vận chuyển hiện tại."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "student_id": {
+                "tracking_code": {
                     "type": "string",
-                    "description": "Mã sinh viên cần tra cứu (ví dụ: 'SV2026001')"
+                    "description": "Mã vận đơn cần tra cứu (ví dụ: 'VD2609001')"
                 }
             },
-            "required": ["student_id"]
+            "required": ["tracking_code"]
         }
     },
-    
-    # --------------------------------------------------------------------------
-    # TODO 1.2: HỌC VIÊN HOÀN THIỆN TOOL SCHEMA CHO 'schedule_appointment'
-    # 🎯 YÊU CẦU THIẾT KẾ SCHEMA (JSON SCHEMA STANDARD):
-    # 1. Tool dùng để đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.
-    # 2. Thiết kế các tham số (properties) để LLM trích xuất:
-    #    - student_id (string): Mã sinh viên cần đặt lịch (ví dụ: 'SV2026001')
-    #    - datetime_str (string): Thời gian hẹn (ví dụ: '14:00 15/09/2026')
-    #    - advisor_name (string): Tên cố vấn học tập
-    # 3. Khai báo danh sách các trường bắt buộc (required).
-    # --------------------------------------------------------------------------
+
+    # Tool 2: Cập nhật trạng thái đơn hàng (công cụ hành động)
     {
-        "name": "schedule_appointment",
-        "description": "Đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.",
+        "name": "update_order_status",
+        "description": (
+            "Cập nhật trạng thái đơn hàng/kho vận theo mã vận đơn "
+            "(ví dụ: Chờ xuất kho, Đã xuất kho, Đang vận chuyển, Đã giao hàng)."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                # TODO 1.2: Khai báo các thuộc tính tham số cho Tool tại đây...
+                "tracking_code": {
+                    "type": "string",
+                    "description": "Mã vận đơn cần cập nhật (ví dụ: 'VD2609001')"
+                },
+                "new_status": {
+                    "type": "string",
+                    "description": "Trạng thái mới của đơn hàng (ví dụ: 'Đã xuất kho', 'Đã giao hàng')"
+                },
+                "warehouse_location": {
+                    "type": "string",
+                    "description": "Vị trí kho xác nhận cập nhật (ví dụ: 'Kho Trung tâm Bắc Ninh')"
+                }
             },
-            "required": [] # TODO 1.2: Khai báo danh sách các trường bắt buộc tại đây...
+            "required": ["tracking_code", "new_status"]
         }
     }
 ]
@@ -55,58 +64,107 @@ TOOLS_SCHEMA = [
 # ==============================================================================
 
 MOCK_DATABASE = {
-    "SV2026001": {
-        "full_name": "Nguyễn Văn An",
-        "class": "AI-K4",
-        "gpa": 3.85,
-        "email": "an.nv@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "PGS.TS Nguyễn Văn A"
+    "VD2609001": {
+        "order_id": "SO-2609-001",
+        "customer": "Công ty TNHH VinFast Trading",
+        "product": "Cụm pin VF8 Plus",
+        "quantity": 20,
+        "unit": "thùng",
+        "warehouse": "Kho Trung tâm Bắc Ninh",
+        "aisle": "A-12",
+        "bin": "B-07",
+        "status": "Đang vận chuyển",
+        "carrier": "VinLogistics",
+        "eta": "15/09/2026",
+        "last_update": "13/09/2026 08:30"
     },
-    "SV2026002": {
-        "full_name": "Trần Thị Bình",
-        "class": "AI-K4",
-        "gpa": 3.60,
-        "email": "binh.tt@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "TS. Lê Thị B"
+    "VD2609002": {
+        "order_id": "SO-2609-002",
+        "customer": "VinFast Hải Phòng Showroom",
+        "product": "Lốp xe VF9 kích thước 20 inch",
+        "quantity": 80,
+        "unit": "cái",
+        "warehouse": "Kho Linh kiện Hải Phòng",
+        "aisle": "C-04",
+        "bin": "D-19",
+        "status": "Chờ xuất kho",
+        "carrier": "VinLogistics",
+        "eta": "16/09/2026",
+        "last_update": "12/09/2026 16:45"
+    },
+    "VD2609003": {
+        "order_id": "SO-2609-003",
+        "customer": "VinFast Đà Nẵng Service",
+        "product": "Bộ sạc nhanh 11kW",
+        "quantity": 12,
+        "unit": "bộ",
+        "warehouse": "Kho Miền Trung Đà Nẵng",
+        "aisle": "E-02",
+        "bin": "A-03",
+        "status": "Đã giao hàng",
+        "carrier": "VinLogistics Express",
+        "eta": "10/09/2026",
+        "last_update": "10/09/2026 11:20"
     }
 }
 
 
-def execute_academic_query(student_id: str) -> str:
-    """Thực thi tra cứu học vụ theo mã sinh viên"""
-    student = MOCK_DATABASE.get(student_id.strip().upper())
-    if student:
+def execute_track_shipment(tracking_code: str) -> str:
+    """Thực thi tra cứu mã vận đơn và vị trí lưu kho"""
+    order = MOCK_DATABASE.get(tracking_code.strip().upper())
+    if order:
         return json.dumps({
             "status": "SUCCESS",
-            "student_id": student_id,
-            "data": student
+            "tracking_code": tracking_code.strip().upper(),
+            "data": order
         }, ensure_ascii=False)
-    else:
+    return json.dumps({
+        "status": "NOT_FOUND",
+        "message": f"Không tìm thấy đơn hàng có mã vận đơn '{tracking_code}'."
+    }, ensure_ascii=False)
+
+
+def execute_update_order_status(
+    tracking_code: str,
+    new_status: str,
+    warehouse_location: str = ""
+) -> str:
+    """Thực thi cập nhật trạng thái đơn hàng"""
+    code = tracking_code.strip().upper()
+    order = MOCK_DATABASE.get(code)
+    if not order:
         return json.dumps({
             "status": "NOT_FOUND",
-            "message": f"Không tìm thấy dữ liệu sinh viên có mã '{student_id}'"
+            "message": f"Không thể cập nhật vì không tìm thấy mã vận đơn '{tracking_code}'."
         }, ensure_ascii=False)
 
+    previous_status = order["status"]
+    order["status"] = new_status
+    if warehouse_location:
+        order["warehouse"] = warehouse_location
+    order["last_update"] = "13/09/2026 10:15"
 
-def execute_schedule_appointment(student_id: str, datetime_str: str, advisor_name: str = "PGS.TS Nguyễn Văn A") -> str:
-    """Thực thi đặt lịch hẹn tư vấn học vụ"""
     return json.dumps({
         "status": "SUCCESS",
-        "booking_id": f"BK-{student_id}-99",
-        "student_id": student_id,
-        "datetime": datetime_str,
-        "advisor": advisor_name,
-        "message": f"Đặt lịch thành công cho sinh viên {student_id} với {advisor_name} vào lúc {datetime_str}."
+        "update_id": f"UPD-{code}-99",
+        "tracking_code": code,
+        "order_id": order["order_id"],
+        "previous_status": previous_status,
+        "new_status": new_status,
+        "warehouse": order["warehouse"],
+        "message": (
+            f"Đã cập nhật đơn {code} từ '{previous_status}' sang '{new_status}' "
+            f"tại {order['warehouse']}."
+        )
     }, ensure_ascii=False)
 
 
 # Router gọi tool thực tế
 TOOL_ROUTER = {
-    "academic_query": execute_academic_query,
-    "schedule_appointment": execute_schedule_appointment
+    "track_shipment": execute_track_shipment,
+    "update_order_status": execute_update_order_status
 }
+
 
 def dispatch_tool_call(tool_name: str, arguments: Dict[str, Any]) -> str:
     """Hàm trung chuyển thực thi tool"""

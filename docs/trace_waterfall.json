@@ -1,29 +1,156 @@
 [
   {
     "step": 1,
-    "query": "Chào bạn, bạn có thể giới thiệu quy chế học vụ cơ bản của Đại học VinUni không?",
+    "query": "Chào bạn, quy trình kho vận chuẩn của VinLogistics gồm những bước nào?",
     "action_type": "FINAL_ANSWER",
-    "thought": "Câu hỏi chung về quy chế học vụ, trả lời trực tiếp không cần gọi Tool.",
-    "output": "[Mock Agent Response]: Xin chào! Quy chế học vụ VinUni yêu cầu sinh viên tích lũy tối thiểu 120 tín chỉ và duy trì GPA trên 2.0 để tốt nghiệp.",
-    "latency_ms": 2845.93
+    "thought": "Câu hỏi chung về quy trình kho vận, trả lời trực tiếp không cần gọi Tool.",
+    "output": "[Mock Agent Response]: Xin chào! Quy trình kho vận chuẩn gồm 5 bước: nhận hàng vào kho, lưu vị trí (kho/dãy/ô), soạn xuất, bàn giao vận chuyển và xác nhận đã giao. Mỗi đơn phải có mã vận đơn để truy vết trạng thái.",
+    "latency_ms": 0.0
   },
   {
     "step": 1,
-    "query": "Hãy tra cứu thông tin học vụ của sinh viên SV2026001.",
+    "query": "Hãy tra cứu mã vận đơn VD2609001 và cho biết vị trí lưu kho hiện tại.",
     "action_type": "TOOL_EXECUTION",
-    "tool_name": "academic_query",
+    "tool_name": "track_shipment",
     "arguments": {
-      "student_id": "SV2026001"
+      "tracking_code": "VD2609001"
     },
-    "observation": {},
-    "latency_ms": 799.12
+    "observation": {
+      "status": "SUCCESS",
+      "tracking_code": "VD2609001",
+      "data": {
+        "order_id": "SO-2609-001",
+        "customer": "Công ty TNHH VinFast Trading",
+        "product": "Cụm pin VF8 Plus",
+        "quantity": 20,
+        "unit": "thùng",
+        "warehouse": "Kho Trung tâm Bắc Ninh",
+        "aisle": "A-12",
+        "bin": "B-07",
+        "status": "Đang vận chuyển",
+        "carrier": "VinLogistics",
+        "eta": "15/09/2026",
+        "last_update": "13/09/2026 08:30"
+      }
+    },
+    "latency_ms": 0.0
   },
   {
     "step": 2,
-    "query": "Hãy tra cứu thông tin học vụ của sinh viên SV2026001.",
+    "query": "Hãy tra cứu mã vận đơn VD2609001 và cho biết vị trí lưu kho hiện tại.",
     "action_type": "FINAL_ANSWER",
-    "thought": "Tổng hợp kết quả từ MCP Server thành công.",
-    "output": "Chưa thể trả lời chi tiết do chưa nhận được dữ liệu từ MCP Server (hãy hoàn thành TODO 2.1).",
-    "latency_ms": 10.0
+    "thought": "Đã nhận Observation, đưa ra câu trả lời cuối cùng.",
+    "output": "Kết quả tra cứu mã vận đơn VD2609001: Đơn SO-2609-001 của Công ty TNHH VinFast Trading. Hàng hóa: Cụm pin VF8 Plus (SL: 20 thùng). Vị trí lưu kho: Kho Trung tâm Bắc Ninh, dãy A-12, ô B-07. Trạng thái: Đang vận chuyển. Đơn vị vận chuyển: VinLogistics, dự kiến giao: 15/09/2026.",
+    "latency_ms": 0.0
+  },
+  {
+    "step": 1,
+    "query": "Cập nhật trạng thái đơn hàng VD2609001 thành 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "update_order_status",
+    "arguments": {
+      "tracking_code": "VD2609001",
+      "new_status": "Đã giao hàng",
+      "warehouse_location": "Kho Trung tâm Bắc Ninh"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "update_id": "UPD-VD2609001-99",
+      "tracking_code": "VD2609001",
+      "order_id": "SO-2609-001",
+      "previous_status": "Đang vận chuyển",
+      "new_status": "Đã giao hàng",
+      "warehouse": "Kho Trung tâm Bắc Ninh",
+      "message": "Đã cập nhật đơn VD2609001 từ 'Đang vận chuyển' sang 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh."
+    },
+    "latency_ms": 0.0
+  },
+  {
+    "step": 2,
+    "query": "Cập nhật trạng thái đơn hàng VD2609001 thành 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Đã nhận Observation, đưa ra câu trả lời cuối cùng.",
+    "output": "Đã cập nhật đơn VD2609001 từ 'Đang vận chuyển' sang 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh.",
+    "latency_ms": 0.0
+  },
+  {
+    "step": 1,
+    "query": "Tra cứu vị trí lưu kho của đơn VD2609002. Nếu đơn còn đang chờ xuất kho thì cập nhật trạng thái thành 'Đã xuất kho'.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "track_shipment",
+    "arguments": {
+      "tracking_code": "VD2609002"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "tracking_code": "VD2609002",
+      "data": {
+        "order_id": "SO-2609-002",
+        "customer": "VinFast Hải Phòng Showroom",
+        "product": "Lốp xe VF9 kích thước 20 inch",
+        "quantity": 80,
+        "unit": "cái",
+        "warehouse": "Kho Linh kiện Hải Phòng",
+        "aisle": "C-04",
+        "bin": "D-19",
+        "status": "Chờ xuất kho",
+        "carrier": "VinLogistics",
+        "eta": "16/09/2026",
+        "last_update": "12/09/2026 16:45"
+      }
+    },
+    "latency_ms": 0.0
+  },
+  {
+    "step": 2,
+    "query": "Tra cứu vị trí lưu kho của đơn VD2609002. Nếu đơn còn đang chờ xuất kho thì cập nhật trạng thái thành 'Đã xuất kho'.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "update_order_status",
+    "arguments": {
+      "tracking_code": "VD2609002",
+      "new_status": "Đã xuất kho",
+      "warehouse_location": "Kho Linh kiện Hải Phòng"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "update_id": "UPD-VD2609002-99",
+      "tracking_code": "VD2609002",
+      "order_id": "SO-2609-002",
+      "previous_status": "Chờ xuất kho",
+      "new_status": "Đã xuất kho",
+      "warehouse": "Kho Linh kiện Hải Phòng",
+      "message": "Đã cập nhật đơn VD2609002 từ 'Chờ xuất kho' sang 'Đã xuất kho' tại Kho Linh kiện Hải Phòng."
+    },
+    "latency_ms": 0.0
+  },
+  {
+    "step": 3,
+    "query": "Tra cứu vị trí lưu kho của đơn VD2609002. Nếu đơn còn đang chờ xuất kho thì cập nhật trạng thái thành 'Đã xuất kho'.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Đã nhận Observation, đưa ra câu trả lời cuối cùng.",
+    "output": "Đã cập nhật đơn VD2609002 từ 'Chờ xuất kho' sang 'Đã xuất kho' tại Kho Linh kiện Hải Phòng.",
+    "latency_ms": 0.0
+  },
+  {
+    "step": 1,
+    "query": "Hãy tra cứu mã vận đơn VD9999999 giúp tôi.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "track_shipment",
+    "arguments": {
+      "tracking_code": "VD9999999"
+    },
+    "observation": {
+      "status": "NOT_FOUND",
+      "message": "Không tìm thấy đơn hàng có mã vận đơn 'VD9999999'."
+    },
+    "latency_ms": 0.0
+  },
+  {
+    "step": 2,
+    "query": "Hãy tra cứu mã vận đơn VD9999999 giúp tôi.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Đã nhận Observation, đưa ra câu trả lời cuối cùng.",
+    "output": "Không tìm thấy đơn hàng có mã vận đơn 'VD9999999'.",
+    "latency_ms": 0.0
   }
 ]

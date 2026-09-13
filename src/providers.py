@@ -35,28 +35,66 @@ class MockOfflineProvider(BaseLLMProvider):
         return f"[Mock Chatbot Response]: Xin chào! Tôi đã nhận được câu hỏi '{prompt}'. (Chế độ Chatbot không có Tool tra cứu dữ liệu thời gian thực)."
 
     def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
+        import re
         prompt_lower = prompt.lower()
-        
-        # Mô phỏng nhận diện intent gọi Tool
-        if "sv2026001" in prompt_lower and "đặt lịch" in prompt_lower:
+        match = re.search(r"vd\d+", prompt_lower)
+        tracking_code = match.group(0).upper() if match else "VD2609001"
+
+        # Đã có Observation từ vòng trước: quyết định gọi tool tiếp hoặc trả lời cuối
+        if "[observation" in prompt_lower:
+            already_updated = "update_id" in prompt_lower
+            still_waiting = "chờ xuất kho" in prompt_lower and any(
+                keyword in prompt_lower for keyword in ["cập nhật", "xuất kho"]
+            )
+            if still_waiting and not already_updated:
+                return {
+                    "type": "tool_call",
+                    "tool_name": "update_order_status",
+                    "arguments": {
+                        "tracking_code": tracking_code,
+                        "new_status": "Đã xuất kho",
+                        "warehouse_location": "Kho Linh kiện Hải Phòng"
+                    },
+                    "thought": f"Đã xác nhận đơn {tracking_code} đang chờ xuất kho. Tôi sẽ gọi update_order_status."
+                }
             return {
-                "type": "tool_call",
-                "tool_name": "schedule_appointment",
-                "arguments": {"student_id": "SV2026001", "datetime_str": "14:00 15/09/2026", "advisor_name": "PGS.TS Nguyễn Văn A"},
-                "thought": "Người dùng yêu cầu đặt lịch hẹn tư vấn cho sinh viên SV2026001. Tôi sẽ gọi tool schedule_appointment."
+                "type": "text",
+                "content": "",
+                "thought": "Đã nhận Observation, đưa ra câu trả lời cuối cùng."
             }
-        elif "sv2026001" in prompt_lower or "tra cứu" in prompt_lower:
+
+        # Mô phỏng nhận diện intent gọi Tool kho vận
+        if any(keyword in prompt_lower for keyword in ["cập nhật", "xuất kho", "đã giao"]) and "nếu" not in prompt_lower:
+            new_status = "Đã giao hàng" if "giao" in prompt_lower else "Đã xuất kho"
+            warehouse = "Kho Trung tâm Bắc Ninh" if "bắc ninh" in prompt_lower else "Kho Linh kiện Hải Phòng"
             return {
                 "type": "tool_call",
-                "tool_name": "academic_query",
-                "arguments": {"student_id": "SV2026001"},
-                "thought": "Người dùng muốn tra cứu thông tin học vụ của sinh viên SV2026001. Tôi sẽ gọi tool academic_query."
+                "tool_name": "update_order_status",
+                "arguments": {
+                    "tracking_code": tracking_code,
+                    "new_status": new_status,
+                    "warehouse_location": warehouse
+                },
+                "thought": f"Người dùng yêu cầu cập nhật trạng thái đơn {tracking_code}. Tôi sẽ gọi tool update_order_status."
+            }
+        elif tracking_code.startswith("VD") and (
+            "tra cứu" in prompt_lower or "vị trí" in prompt_lower or "mã vận đơn" in prompt_lower or match
+        ):
+            return {
+                "type": "tool_call",
+                "tool_name": "track_shipment",
+                "arguments": {"tracking_code": tracking_code},
+                "thought": f"Người dùng muốn tra cứu mã vận đơn {tracking_code}. Tôi sẽ gọi tool track_shipment."
             }
         else:
             return {
                 "type": "text",
-                "content": f"[Mock Agent Response]: Xin chào! Quy chế học vụ VinUni yêu cầu sinh viên tích lũy tối thiểu 120 tín chỉ và duy trì GPA trên 2.0 để tốt nghiệp.",
-                "thought": "Câu hỏi chung về quy chế học vụ, trả lời trực tiếp không cần gọi Tool."
+                "content": (
+                    "[Mock Agent Response]: Xin chào! Quy trình kho vận chuẩn gồm 5 bước: "
+                    "nhận hàng vào kho, lưu vị trí (kho/dãy/ô), soạn xuất, bàn giao vận chuyển và xác nhận đã giao. "
+                    "Mỗi đơn phải có mã vận đơn để truy vết trạng thái."
+                ),
+                "thought": "Câu hỏi chung về quy trình kho vận, trả lời trực tiếp không cần gọi Tool."
             }
 
 
