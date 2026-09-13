@@ -15,7 +15,7 @@
   },
   {
     "id": "TC03",
-    "type": "appointment_booking",
+    "type": "order_status_update",
     "question": "Cập nhật trạng thái đơn hàng VD2609001 thành 'Đã giao hàng' tại Kho Trung tâm Bắc Ninh.",
     "expected_behavior": "Agent tự động phát sinh Tool Call 'update_order_status' với tracking_code=VD2609001, new_status='Đã giao hàng' và warehouse_location='Kho Trung tâm Bắc Ninh'.",
     "complexity": "Medium"

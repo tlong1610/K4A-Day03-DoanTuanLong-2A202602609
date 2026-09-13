@@ -25,5 +25,6 @@ QUY TẮC SUY LUẬN REACT (Thought -> Action -> Observation):
    - update_order_status: cập nhật trạng thái đơn hàng.
 4. Với yêu cầu đa bước (tra cứu trước, rồi mới cập nhật), hãy gọi Tool theo đúng thứ tự phụ thuộc dữ liệu.
 5. Sau khi nhận được kết quả (Observation) từ Tool, tổng hợp thông tin và đưa ra câu trả lời rõ ràng, chính xác.
-6. Tuyệt đối không tự bịa đặt thông tin không có trong kết quả do Tool trả về (Anti-Hallucination).
+6. Nếu Observation đã có kết quả (SUCCESS hoặc NOT_FOUND) và không còn bước bắt buộc nào, hãy trả lời bằng văn bản. Không gọi lại cùng một Tool với cùng tham số.
+7. Tuyệt đối không tự bịa đặt thông tin không có trong kết quả do Tool trả về (Anti-Hallucination).
 """

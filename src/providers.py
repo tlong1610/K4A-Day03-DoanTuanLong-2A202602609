@@ -6,6 +6,8 @@ Hỗ trợ Native Tool Calling và chuyển đổi linh hoạt qua biến môi t
 import os
 import sys
 import json
+import time
+import re
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 
@@ -15,7 +17,8 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-load_dotenv()
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_PROJECT_ROOT, ".env"), override=True)
 
 class BaseLLMProvider:
     """Interface cơ sở cho các LLM Provider hỗ trợ Native Tool Calling"""
@@ -102,7 +105,7 @@ class GeminiProvider(BaseLLMProvider):
     """Google Gemini Provider (Native Tool Calling với Google GenAI SDK)"""
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-2.5-flash"
+        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-3.6-flash"
 
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         if not self.api_key or self.api_key == "your_gemini_api_key_here":
@@ -169,7 +172,53 @@ class GeminiProvider(BaseLLMProvider):
                 }
 
         except Exception as e:
-            print(f"⚠️ [Gemini API Warning]: Không thể kết nối live API ({str(e)}). Tự động fallback về Mock.")
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                wait_match = re.search(r"retry in ([\d.]+)s", err, re.IGNORECASE)
+                wait_s = int(float(wait_match.group(1))) + 2 if wait_match else 45
+                print(f"⏳ [Gemini Rate Limit]: Hết quota tạm thời. Đợi {wait_s}s rồi gọi lại API thật...")
+                time.sleep(wait_s)
+                try:
+                    from google import genai
+                    from google.genai import types
+                    client = genai.Client(api_key=self.api_key)
+                    function_declarations = []
+                    for tool in tools_schema:
+                        if not tool.get("name") or not tool.get("parameters"):
+                            continue
+                        function_declarations.append({
+                            "name": tool["name"],
+                            "description": tool.get("description", ""),
+                            "parameters": tool.get("parameters", {})
+                        })
+                    config = types.GenerateContentConfig(
+                        system_instruction=system_prompt if system_prompt else None,
+                        tools=[{"function_declarations": function_declarations}] if function_declarations else None,
+                        temperature=0.2
+                    )
+                    response = client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=config
+                    )
+                    if response.function_calls:
+                        call = response.function_calls[0]
+                        args = dict(call.args) if hasattr(call, "args") and call.args else {}
+                        return {
+                            "type": "tool_call",
+                            "tool_name": call.name,
+                            "arguments": args,
+                            "thought": f"Gemini quyết định gọi công cụ '{call.name}' với tham số: {json.dumps(args, ensure_ascii=False)}"
+                        }
+                    return {
+                        "type": "text",
+                        "content": response.text or "",
+                        "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ)."
+                    }
+                except Exception as retry_err:
+                    print(f"⚠️ [Gemini API Warning]: Retry thất bại ({str(retry_err)}). Tự động fallback về Mock.")
+                    return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
+            print(f"⚠️ [Gemini API Warning]: Không thể kết nối live API ({err}). Tự động fallback về Mock.")
             return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
 
 

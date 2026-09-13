@@ -25,7 +25,8 @@ from prompts import (
 )
 from providers import get_llm_provider
 
-load_dotenv()
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_PROJECT_ROOT, ".env"), override=True)
 
 def load_test_cases():
     """Tải danh sách 5 test cases từ config/test_cases.json hoặc config/test_cases.example.json"""
@@ -155,8 +156,8 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPAcademicServer) ->
             current_query = (
                 f"{user_query}\n\n"
                 f"[Observation từ tool {tool_name}]: {obs_str}\n"
-                "Nếu đã đủ dữ liệu thì đưa ra câu trả lời cuối cùng. "
-                "Nếu còn thiếu bước (ví dụ cần cập nhật trạng thái sau khi tra cứu) thì gọi Tool tiếp theo."
+                "Nếu đã đủ dữ liệu thì đưa ra câu trả lời cuối cùng bằng văn bản, không gọi lại Tool. "
+                "Chỉ gọi Tool tiếp theo khi còn một bước bắt buộc khác (ví dụ vừa tra cứu xong và cần cập nhật trạng thái)."
             )
             continue
 
